@@ -1,0 +1,947 @@
+using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Windows;
+using Point = System.Drawing.Point;
+
+namespace Rocketv3
+{
+    public partial class MainWindow : Window
+    {
+        public string dnConsolePath = @"dnconsole.exe";
+        public string ldConsolePath = @"ld.exe";
+        public int index;
+        public string idFriend = "chris%1447";
+        public int ldPlayerCount;
+        private int requestTotal;
+        private int requestCount;
+        public string imonsterPackageName = "com.sigmagame.imonster";
+        private StreamWriter logStreamWriter;
+
+        // Đọc template
+        public Mat newgame = CvInvoke.Imread("img/newgame.png", ImreadModes.Color);
+        public Mat add = CvInvoke.Imread("img/add.png", ImreadModes.Color);
+        public Mat addbtn = CvInvoke.Imread("img/addbtn.png", ImreadModes.Color);
+        public Mat back = CvInvoke.Imread("img/back.png", ImreadModes.Color);
+        public Mat boy = CvInvoke.Imread("img/boy.png", ImreadModes.Color);
+        public Mat cancel = CvInvoke.Imread("img/cancel.png", ImreadModes.Color);
+        public Mat close = CvInvoke.Imread("img/close.png", ImreadModes.Color);
+        public Mat caps = CvInvoke.Imread("img/caps.png", ImreadModes.Color);
+        public Mat clickinput = CvInvoke.Imread("img/clickinput.png", ImreadModes.Color);
+        public Mat chick = CvInvoke.Imread("img/chick.png", ImreadModes.Color);
+        public Mat drag = CvInvoke.Imread("img/drag.png", ImreadModes.Color);
+        public Mat firechick = CvInvoke.Imread("img/firechick.png", ImreadModes.Color);
+        public Mat gains = CvInvoke.Imread("img/gains.png", ImreadModes.Color);
+        public Mat getreward = CvInvoke.Imread("img/getreward.png", ImreadModes.Color);
+        public Mat go2 = CvInvoke.Imread("img/go2.png", ImreadModes.Color);
+        public Mat heal = CvInvoke.Imread("img/heal.png", ImreadModes.Color);
+        public Mat insert = CvInvoke.Imread("img/insert.png", ImreadModes.Color);
+        public Mat ld = CvInvoke.Imread("img/ld.png", ImreadModes.Color);
+        public Mat ok = CvInvoke.Imread("img/ok.png", ImreadModes.Color);
+        public Mat reward = CvInvoke.Imread("img/reward.png", ImreadModes.Color);
+        public Mat rewards = CvInvoke.Imread("img/rewards.png", ImreadModes.Color);
+        public Mat search = CvInvoke.Imread("img/search.png", ImreadModes.Color);
+        public Mat select = CvInvoke.Imread("img/select.png", ImreadModes.Color);
+        public Mat skill = CvInvoke.Imread("img/skill.png", ImreadModes.Color);
+        public Mat skip = CvInvoke.Imread("img/skip.png", ImreadModes.Color);
+        public Mat social = CvInvoke.Imread("img/social.png", ImreadModes.Color);
+        public Mat suc = CvInvoke.Imread("img/suc.png", ImreadModes.Color);
+        public Mat x8 = CvInvoke.Imread("img/x8.png", ImreadModes.Color);
+        public Mat map1 = CvInvoke.Imread("img/map1.png", ImreadModes.Color);
+        public Mat go = CvInvoke.Imread("img/go.png", ImreadModes.Color);
+        public Mat ok2 = CvInvoke.Imread("img/ok2.png", ImreadModes.Color);
+        public Mat ok1 = CvInvoke.Imread("img/ok1.png", ImreadModes.Color);
+        public Mat presss = CvInvoke.Imread("img/presss.png", ImreadModes.Color);
+        public Mat search1 = CvInvoke.Imread("img/search1.png", ImreadModes.Color);
+        public Mat tur1 = CvInvoke.Imread("img/tur1.png", ImreadModes.Color);
+        public Mat side = CvInvoke.Imread("img/side.png", ImreadModes.Color);
+        public Mat masterball = CvInvoke.Imread("img/masterball.png", ImreadModes.Color);
+        public Mat find = CvInvoke.Imread("img/find.png", ImreadModes.Color);
+        public Mat cong = CvInvoke.Imread("img/cong.png", ImreadModes.Color);
+        public Mat skill2 = CvInvoke.Imread("img/skill2.png", ImreadModes.Color);
+        public Mat chick2 = CvInvoke.Imread("img/chick2.png", ImreadModes.Color);
+        public Mat close2 = CvInvoke.Imread("img/close2.png", ImreadModes.Color);
+        public Mat setting = CvInvoke.Imread("img/setting.png", ImreadModes.Color);
+        public Mat map = CvInvoke.Imread("img/map.png", ImreadModes.Color);
+        public Mat typetoinput = CvInvoke.Imread("img/typetoinput.png", ImreadModes.Color);
+        public Mat create = CvInvoke.Imread("img/create.png", ImreadModes.Color);
+
+
+        // Khai báo biến boolean để kiểm tra trạng thái chạy
+        private volatile bool isRunning = true;
+
+
+
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll")]
+        private static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        public MainWindow()
+
+        {
+            // Lấy đường dẫn của thư mục ứng dụng
+            string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+
+            // Tạo đường dẫn tới thư mục logs
+            string logDirectory = Path.Combine(appDirectory, "logs");
+
+            // Kiểm tra xem thư mục logs đã tồn tại hay chưa, nếu chưa thì tạo mới
+            if (!Directory.Exists(logDirectory))
+            {
+                Directory.CreateDirectory(logDirectory);
+            }
+
+            // Lấy ngày tháng năm hiện tại
+            DateTime currentDate = DateTime.Now;
+
+            // Định dạng ngày tháng năm thành chuỗi
+            string formattedDate = currentDate.ToString("yyyy-MM-dd");
+
+            // Tạo tên tệp tin nhật ký
+            string logFileName = Path.Combine(logDirectory, $"{formattedDate}.txt");
+
+            // Khởi tạo StreamWriter để ghi vào tệp tin nhật ký
+            logStreamWriter = new StreamWriter(logFileName, true);
+
+            InitializeComponent();
+
+        }
+
+
+        private void Start_Click(object sender, RoutedEventArgs e)
+        {
+            // Lấy giá trị từ bảng điều khiển và gán vào biến
+            idFriend = IdFriendTextBox.Text;
+            ldPlayerCount = Convert.ToInt32(LdPlayerCountTextBox.Text);
+            requestTotal = Convert.ToInt32(RequestTotalTextBox.Text);
+            requestCount = 0;
+
+
+            RunAutoAddFriendParallel();
+        }
+        // Hàm để dừng và tắt chương trình
+
+        private void CloseLD_Click(object sender, RoutedEventArgs e)
+        {
+            logStreamWriter.Close();
+            Thread.Sleep(200);
+            isRunning = false;
+            QuitAllLDPlayer();
+            Thread.Sleep(200);
+            Environment.Exit(0);
+        }
+        private void QuitAllLDPlayer()
+        {
+            RunDnConsoleWithoutWindow("quitall");
+        }
+        private void CloseLDPlayer(int index)
+
+        {
+            ClearAppData(index); //xóa dữ liệu app
+            Thread.Sleep(200);
+            string closeArguments = $"quit --index {index}";
+
+            RunDnConsoleWithoutWindow(closeArguments);
+        }
+        private void LaunchLDPlayer(int index)
+        {
+            string launchArguments = $"launch --index {index}";
+
+            RunDnConsoleWithoutWindow(launchArguments);
+
+        }
+        private void ClearAppData(int index)
+        {
+
+            string clearDataCommand = $"-s {index} pm clear com.sigmagame.imonster";
+            RunLDConsoleWithoutWindow(clearDataCommand);
+            Thread.Sleep(2000);
+
+        }
+        private void PushFile(int index)
+        {
+            string deleteFileCommand6 = $"-s {index} rm -rf /data/data/com.sigmagame.imonster/shared_prefs/COUNTLY_STORE.xml";
+            RunLDConsoleWithoutWindow(deleteFileCommand6);
+            Thread.Sleep(100);
+        }
+        public class RandomStringGenerator
+        {
+            private static readonly Random random = new Random();
+            private const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890  ";
+
+            public static string GenerateRandomString()
+            {
+                int minLength = 6;
+                int maxLength = 12;
+
+                int length = random.Next(minLength, maxLength + 1);
+                StringBuilder stringBuilder = new StringBuilder(length);
+
+                for (int i = 0; i < length; i++)
+                {
+                    int index = random.Next(chars.Length);
+                    char randomChar = chars[index];
+                    stringBuilder.Append(randomChar);
+                }
+
+                return stringBuilder.ToString();
+            }
+        }
+        private void Changedevice(int index)
+        {
+            string changeandroididCommand = $"setprop --index {index} --key \"phone.androidid\" --value \"auto\"";
+            RunDnConsoleWithoutWindow(changeandroididCommand);
+            Thread.Sleep(100);
+            string changeimeiCommand = $"setprop --index {index} --key \"phone.imei\" --value \"auto\"";
+            RunDnConsoleWithoutWindow(changeimeiCommand);
+            Thread.Sleep(100);
+        }
+
+        private void InputText(int index, string idFriend)
+        {
+
+
+            string inputTextArguments = $"action --index {index} --key call.input --value \"{idFriend}\"";
+            RunDnConsoleWithoutWindow(inputTextArguments);
+        }
+        private void InputName(int index)
+        {
+            string randomString = RandomStringGenerator.GenerateRandomString();
+
+            string inputTextArguments = $"-s {index} input text '{randomString}'";
+            RunLDConsoleWithoutWindow(inputTextArguments);
+        }
+        internal void Tap(int index, int x, int y)
+        {
+            string tapArguments = $"-s {index} input tap {x} {y}";
+            RunLDConsoleWithoutWindow(tapArguments);
+        }
+        private void Swipe(int index, int startX, int startY, int endX, int endY)
+        {
+            string swipeCommand = $"-s {index} input swipe {startX} {startY} {endX} {endY} 300";
+            RunLDConsoleWithoutWindow(swipeCommand);
+            Thread.Sleep(200);
+        }
+
+        private void OpenAppAsync(int index)
+        {
+            string runAppArguments = $"runapp --index {index} --packagename {imonsterPackageName}";
+
+            RunDnConsoleWithoutWindow(runAppArguments);
+
+        }
+        private void CloseAppAsync(int index)
+        {
+            string closeAppArguments = $"-s {index} am force-stop {imonsterPackageName}";
+
+            RunLDConsoleWithoutWindow(closeAppArguments);
+        }
+        private void ClearAndRestore(int index)
+        {
+
+
+            string deleteFileCommand1 = $"-s {index} rm -rf /data/data/com.sigmagame.imonster/imonster_log.db";
+            RunLDConsoleWithoutWindow(deleteFileCommand1);
+            Thread.Sleep(100);
+            string deleteFileCommand2 = $"-s {index} rm -rf /data/data/com.sigmagame.imonster/monster_profile_00.dat";
+            RunLDConsoleWithoutWindow(deleteFileCommand2);
+            Thread.Sleep(100);
+            string deleteFileCommand3 = $"-s {index} rm -rf /data/data/com.sigmagame.imonster/monster_profile_00b.dat";
+            RunLDConsoleWithoutWindow(deleteFileCommand3);
+            Thread.Sleep(100);
+            string deleteFileCommand4 = $"-s {index} rm -rf /data/data/com.sigmagame.imonster/RRateMe_01.dat";
+            RunLDConsoleWithoutWindow(deleteFileCommand4);
+            Thread.Sleep(100);
+            string deleteFileCommand5 = $"-s {index} rm -rf /data/data/com.sigmagame.imonster/RRateMe_02.dat";
+            RunLDConsoleWithoutWindow(deleteFileCommand5);
+            Thread.Sleep(100);
+            string deleteFileCommand6 = $"-s {index} rm -rf /data/data/com.sigmagame.imonster/shared_prefs/COUNTLY_STORE.xml";
+            RunLDConsoleWithoutWindow(deleteFileCommand6);
+            Thread.Sleep(100);
+
+            string adbPushCommand = $"-s {index} push /shared_prefs/x8_user_speed.xml /data/data/com.sigmagame.imonster/shared_prefs";
+            RunLDConsoleWithoutWindow(adbPushCommand);
+            Thread.Sleep(100);
+
+
+            Thread.Sleep(200);
+
+
+
+        }
+        private void RunDnConsoleWithoutWindow(string command)
+        {
+            try
+            {
+                using (Process process = new Process())
+                {
+                    ProcessStartInfo processStartInfo = new ProcessStartInfo
+                    {
+                        FileName = dnConsolePath,
+                        Arguments = command,
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    };
+
+                    process.StartInfo = processStartInfo;
+                    process.Start();
+                    process.WaitForExit(); // Đợi quy trình hoàn thành
+                }
+            }
+            catch (Exception ex)
+            {
+                // Xử lý hoặc ghi lại ngoại lệ
+                Console.WriteLine("Đã xảy ra lỗi: " + ex.Message);
+            }
+        }
+        private void RunLDConsoleWithoutWindow(string command)
+        {
+            try
+            {
+                using (Process process = new Process())
+                {
+                    ProcessStartInfo processStartInfo = new ProcessStartInfo
+                    {
+                        FileName = ldConsolePath,
+                        Arguments = command,
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    };
+
+                    process.StartInfo = processStartInfo;
+                    process.Start();
+                    process.WaitForExit(); // Đợi quy trình hoàn thành
+                }
+            }
+            catch (Exception ex)
+            {
+                // Xử lý hoặc ghi lại ngoại lệ
+                Console.WriteLine("Đã xảy ra lỗi: " + ex.Message);
+            }
+        }
+
+
+
+
+        private Dictionary<int, string> threadStatus = new Dictionary<int, string>();
+
+        public void RunAutoAddFriendParallel()
+        {
+            var tasks = new List<Task>();
+
+            for (int i = 1; i <= ldPlayerCount; i++)
+            {
+                int index = i;
+                threadStatus[index] = "Started";
+
+                tasks.Add(Task.Run(() =>
+                {
+                    try
+                    {
+                        threadStatus[index] = "Running";
+
+                        while (isRunning) // Kiểm tra trạng thái chạy
+                        {
+                            AutoAddFriend(index); // Thực hiện công việc cho index cụ thể
+                            Thread.Sleep(1000); // Tạm dừng 1 giây trước khi lặp lại
+                        }
+
+                        threadStatus[index] = "Completed";
+                    }
+                    catch (Exception ex)
+                    {
+                        threadStatus[index] = $"Failed: {ex.Message}";
+                    }
+                }));
+
+                Thread.Sleep(5000); // Chờ đợi 5 giây trước khi bắt đầu luồng tiếp theo
+            }
+
+            Task.WhenAll(tasks); // Chờ tất cả các tác vụ hoàn thành
+
+            // Kiểm tra trạng thái của tất cả các luồng
+            foreach (var status in threadStatus)
+            {
+                Console.WriteLine($"Thread {status.Key}: {status.Value}");
+            }
+        }
+
+
+        // Hàm được gọi khi nhấn nút stop
+        public void StopAutoAddFriend()
+        {
+            isRunning = false; // Đặt trạng thái chạy là false
+                               // Cần đợi cho tất cả các luồng kết thúc trước khi tiếp tục xử lý
+                               // Bạn có thể thêm mã để đợi tất cả các luồng kết thúc ở đây
+        }
+
+
+        private void AutoAddFriend(int index)
+        {
+            LaunchLDPlayer(index);
+            Thread.Sleep(8000);
+            CloseAppAsync(index);
+            ClearAppData(index); //xóa dữ liệu app
+
+            ClickImage(index, ld, "ld.png", 20);
+
+            for (int j = 0; j < 5; j++)
+            {
+                ScriptAuto(index);
+            }
+            CloseLDPlayer(index);
+            Thread.Sleep(3000);
+        }
+
+
+        private void ScriptAuto(int index)
+        {
+            ClearAppData(index); //xóa dữ liệu app
+
+            CloseAppAsync(index);//đóng app
+            ClearAppData(index); //xóa dữ liệu app
+            Thread.Sleep(2000);
+
+            OpenAppAsync(index); //mở app
+            Thread.Sleep(8000);
+            
+            FindImage(index, setting, "setting.png");
+           
+            ClickImage(index, newgame, "newgame.png", 20); //click vào newgame
+            Thread.Sleep(4000);
+
+            ClickImage(index, skip, "skip.png", 20); //click nút skip
+            Thread.Sleep(4000);
+            ClickImage(index, typetoinput, "typetoinput.png", 20); //click vào ô nhập tên
+            Thread.Sleep(500);
+            InputName(index); //nhập tên
+            Thread.Sleep(500);
+            Tap(index, 218, 303); // click vào nút ok
+            Thread.Sleep(500);
+            ClickImage(index, create, "create.png", 20); //click vào create
+            
+            Thread.Sleep(1500);
+            FindImage(index, select, "select.png");
+            Thread.Sleep(200);
+            ClickImage(index, select, "select.png", 20); //click vào nút select
+            Thread.Sleep(50000);
+            FindImage(index, drag, "drag.png");
+            Thread.Sleep(200);
+            ClickImage(index, drag, "drag.png", 50); //click vào drag
+            Thread.Sleep(2000);
+            ClickImage(index, map, "map.png", 20); //click vào ô nhập
+
+
+            SwipeImage(index, chick,"chick.png", 10, 421); // kéo con gà vào ô trống
+            Thread.Sleep(500);
+            Tap(index, 30, 372); //click vào nút map
+            Thread.Sleep(1600);
+            FindImage(index, presss, "presss.png");
+            Thread.Sleep(200);
+            ClickImage(index, presss, "presss.png", 20);
+            Thread.Sleep(1600);
+            Tap(index, 121, 157);
+
+            Thread.Sleep(600);
+
+            ClickImage(index, go, "go.png", 20);//click vào go
+            Thread.Sleep(3000);
+
+
+            ClickImage(index, boy, "boy.png", 20);
+            Thread.Sleep(800);
+            Tap(index, 152, 329);
+            Thread.Sleep(800);
+            Tap(index, 192, 311);
+            Thread.Sleep(800);
+            Tap(index, 207, 256);
+            Thread.Sleep(1800);
+            Tap(index, 219, 243);
+            Thread.Sleep(800);
+            Tap(index, 219, 243);
+            ClickImage(index, close, "close.png", 20);
+            Thread.Sleep(1000);
+
+            ClickImage(index, search1, "search1.png", 20);
+            Thread.Sleep(1000);
+
+            FindImage(index, firechick, "firechick.png");
+            Thread.Sleep(600);
+
+            ClickImage(index, firechick, "firechick.png", 20);
+            Thread.Sleep(1000);
+
+            ClickImage(index, tur1, "tur1.png", 20);
+            Thread.Sleep(1000);
+
+            ClickImage(index, skill, "skill.png", 20);
+            Thread.Sleep(3500);
+            Tap(index, 65, 345); //click vào skill
+
+            ClickImage(index, skill2, "skill2.png", 20);
+            Thread.Sleep(3500);
+
+            ClickImage(index, gains, "gains.png", 20);
+            Thread.Sleep(500);
+
+
+            ClickImage(index, rewards, "rewards.png", 20);
+            Thread.Sleep(500);
+
+
+            ClickImage(index, reward, "reward.png", 20);
+            Thread.Sleep(500);
+
+
+            ClickImage(index, heal, "heal.png", 20);
+            Thread.Sleep(2000);
+
+            ClickImage(index, chick2, "chick2.png", 20);
+            Thread.Sleep(500);
+
+
+            Tap(index, 10, 421); //click vào con gà
+            Thread.Sleep(1000);
+
+            Tap(index, 35, 365); //click vào bình máu
+            Thread.Sleep(1000);
+
+            Tap(index, 135, 390); //click vào sử dụng máu
+            Thread.Sleep(1000);
+
+            ClickImage(index, close, "close.png", 20);
+            Thread.Sleep(600);
+
+            ClickImage(index, search1, "search1.png", 20);
+            Thread.Sleep(1000);
+
+            FindImage(index, firechick, "firechick.png");
+            Thread.Sleep(300);
+            ClickImage(index, firechick, "firechick.png", 20);
+            Thread.Sleep(2500);
+            FindImage(index, caps, "caps.png");
+            Thread.Sleep(800);
+
+            ClickImage(index, caps, "caps.png", 20);
+            Thread.Sleep(2000);
+            Tap(index, 130, 245); //click vào con gà
+
+            Thread.Sleep(500);
+            Swipe(index, 245, 365, 35, 365);
+            Thread.Sleep(300);
+            Swipe(index, 245, 365, 35, 365);
+            Thread.Sleep(300);
+            Swipe(index, 245, 365, 35, 365);
+            Thread.Sleep(300);
+            Swipe(index, 245, 365, 35, 365);
+            Thread.Sleep(300);
+            Swipe(index, 245, 365, 35, 365);
+            Thread.Sleep(300);
+
+            ClickImage(index, masterball, "masterball.png", 20);
+            Thread.Sleep(600);
+            ClickImage(index, rewards, "rewards.png", 20);
+            Thread.Sleep(600);
+            ClickImage(index, reward, "reward.png", 20);
+            Thread.Sleep(600);
+            ClickImage(index, close, "close.png", 20);
+
+            ClickImage(index, find, "find.png", 20);
+
+            Thread.Sleep(600);
+
+            Tap(index, 135, 170); //click vào ô di chuyển
+            Thread.Sleep(600);
+
+            Tap(index, 135, 170); //click vào ô di chuyển
+            Thread.Sleep(600);
+
+            ClickImage(index, search1, "search1.png", 20);
+            Thread.Sleep(600);
+
+            ClickImage(index, reward, "reward.png", 20);
+            Thread.Sleep(600);
+
+            ClickImage(index, rewards, "rewards.png", 20);
+
+            Thread.Sleep(600);
+
+            ClickImage(index, reward, "reward.png", 20);
+            Thread.Sleep(600);
+            ClickImage(index, cong, "cong.png", 20);
+            Thread.Sleep(600);
+
+            ClickImage(index, close2, "close2.png", 20);
+            Thread.Sleep(1000);
+
+            FindImage(index, social, "social.png");
+
+            ClickImage(index, social, "social.png", 20);
+            Thread.Sleep(2500);
+
+            FindImage(index, addbtn, "addbtn.png");
+            Thread.Sleep(600);
+
+            ClickImage(index, addbtn, "addbtn.png", 20);
+            Thread.Sleep(600);
+
+            FindImage(index, insert, "insert.png");
+            Thread.Sleep(600);
+
+            ClickImage(index, insert, "insert.png", 20);
+            Thread.Sleep(600);
+
+            InputText(index, idFriend);
+            Thread.Sleep(100);
+
+            ClickImage(index, ok, "ok.png", 20);
+            Thread.Sleep(200);
+
+            ClickImage(index, search, "search.png", 20);
+            Thread.Sleep(1000);
+
+            ClickImage(index, add, "add.png", 20);
+            Thread.Sleep(500);
+
+            ClickImage(index, suc, "suc.png", 20);
+            Thread.Sleep(500);
+            ClearAppData(index); //xóa dữ liệu app
+
+            Dispatcher.InvokeAsync(() =>
+            {
+
+
+                requestCount++;
+                string logMessage = $"{DateTime.Now}, {index}, {idFriend}, {requestCount}";
+                logStreamWriter.WriteLine(logMessage);
+                logStreamWriter.Flush(); // Đảm bảo thông tin được ghi vào tệp ngay lập tức
+                // Cập nhật giao diện với giá trị mới của requestCount
+                RequestCountTextBlock.Text = $"Đã xong: {requestCount}";
+                if (requestCount >= requestTotal)
+                {
+                    // Kiểm tra nếu đã đạt đủ số lượng request, thì kết thúc chương trình
+                    logStreamWriter.Close();
+                    Thread.Sleep(200);
+                    isRunning = false;
+                    QuitAllLDPlayer();
+                    Thread.Sleep(200);
+                    Environment.Exit(0);
+
+
+                }
+
+            });
+            CloseAppAsync(index);
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+        public void ClickImage(int index, Mat template, string templateName, int attempt)
+        {
+
+            string windowTitle = $"LDPlayer-{index}";
+            IntPtr ldPlayerWindowHandle = FindWindow(null, windowTitle);
+
+            if (ldPlayerWindowHandle != IntPtr.Zero)
+            {
+                int attempts = 0;
+                bool found = false;
+                Point center = new Point();
+
+                while (!found && attempts < attempt)
+                {
+                    // Chụp màn hình và xử lí ảnh
+                    Bitmap croppedBitmap = CaptureScreenshot(ldPlayerWindowHandle);
+
+                    // Chuyển đổi bitmap sang image
+                    using (Image<Bgr, byte> emguImage = croppedBitmap.ToImage<Bgr, byte>())
+                    {
+                        // Thực hiện template matching
+                        Mat result = new Mat();
+                        CvInvoke.MatchTemplate(emguImage, template, result, TemplateMatchingType.CcoeffNormed);
+
+                        // Tìm vị trí của đối tượng trong hình ảnh
+                        double minVal = 0, maxVal = 0;
+                        Point minLoc = new Point(), maxLoc = new Point();
+                        CvInvoke.MinMaxLoc(result, ref minVal, ref maxVal, ref minLoc, ref maxLoc);
+
+                        // Kiểm tra xem có tìm thấy template hay không
+                        if (maxVal > 0.90)
+                        {
+                            // Hiển thị toạ độ của tâm ảnh
+                            int templateWidth = template.Width;
+                            int templateHeight = template.Height;
+                            center = new Point(maxLoc.X + templateWidth / 2, maxLoc.Y + templateHeight / 2);
+                            found = true;
+                        }
+                        else
+                        {
+                            // Tăng số lần thử và đợi 1 giây trước khi thử lại
+                            attempts++;
+                            Thread.Sleep(1000);
+                        }
+                    }
+                }
+
+                if (found)
+                {
+                    //sử dụng lệnh tap của class mainwindow để click vào ảnh
+                    Thread.Sleep(200);
+                    Tap(index, center.X, center.Y);
+                    
+                }
+                else
+                {
+                    // Nếu không tìm thấy kết quả sau tất cả các lần chụp ảnh, chạy hàm ScriptsAddFriend.
+                    CloseLDPlayer(index);
+                    ClearAppData(index); //xóa dữ liệu app
+                    Dispatcher.InvokeAsync(() =>
+                    {
+
+                        string logMessage1 = $"{DateTime.Now}, {index}, error click image {templateName}";
+                        logStreamWriter.WriteLine(logMessage1);
+                        logStreamWriter.Flush(); // Đảm bảo thông tin được ghi vào tệp ngay lập tức
+                                                 // Cập nhật giao diện với giá trị mới của requestCount
+
+
+                    });
+
+                    Thread.Sleep(600);
+                    AutoAddFriend(index); // Sử dụng Task.Run để gọi AutoAddFriend
+                }
+            }
+            else
+            {
+                // Nếu không tìm thấy cửa sổ LDPlayer, khởi động lại LDPlayer
+                LaunchLDPlayer(index);
+                Thread.Sleep(8000); // Chờ đợi một khoảng thời gian sau khi khởi động LDPlayer
+                AutoAddFriend(index); // Sử dụng Task.Run để gọi AutoAddFriend
+
+            }
+        }
+        public void FindImage(int index, Mat template, string templateName)
+        {
+
+            string windowTitle = $"LDPlayer-{index}";
+            IntPtr ldPlayerWindowHandle = FindWindow(null, windowTitle);
+
+            if (ldPlayerWindowHandle != IntPtr.Zero)
+            {
+                int attempts = 0;
+                bool found = false;
+
+                while (!found && attempts < 20)
+                {
+                    // Chụp màn hình và xử lí ảnh
+                    Bitmap croppedBitmap = CaptureScreenshot(ldPlayerWindowHandle);
+
+                    // Chuyển đổi bitmap sang image
+                    using (Image<Bgr, byte> emguImage = croppedBitmap.ToImage<Bgr, byte>())
+                    {
+                        // Thực hiện template matching
+                        Mat result = new Mat();
+                        CvInvoke.MatchTemplate(emguImage, template, result, TemplateMatchingType.CcoeffNormed);
+
+                        // Tìm vị trí của đối tượng trong hình ảnh
+                        double minVal = 0, maxVal = 0;
+                        Point minLoc = new Point(), maxLoc = new Point();
+                        CvInvoke.MinMaxLoc(result, ref minVal, ref maxVal, ref minLoc, ref maxLoc);
+
+                        // Kiểm tra xem có tìm thấy template hay không
+                        if (maxVal > 0.50)
+                        {
+
+                            found = true;
+                        }
+                        else
+                        {
+                            // Tăng số lần thử và đợi 1 giây trước khi thử lại
+                            attempts++;
+                            Thread.Sleep(1000);
+                        }
+                    }
+                }
+
+                if (found)
+                {
+                    Thread.Sleep(100);
+                }
+                else
+                {
+                    // Nếu không tìm thấy kết quả sau tất cả các lần chụp ảnh, chạy hàm ScriptsAddFriend.
+                    CloseLDPlayer(index);
+                    ClearAppData(index); //xóa dữ liệu app
+                    Dispatcher.InvokeAsync(() =>
+                    {
+
+                        string logMessage1 = $"{DateTime.Now}, {index}, error find image {templateName}";
+                        logStreamWriter.WriteLine(logMessage1);
+                        logStreamWriter.Flush(); // Đảm bảo thông tin được ghi vào tệp ngay lập tức
+                                                 // Cập nhật giao diện với giá trị mới của requestCount
+
+
+                    });
+                    Thread.Sleep(600);
+                    AutoAddFriend(index); // Sử dụng Task.Run để gọi AutoAddFriend
+
+                }
+            }
+            else
+            {
+                // Nếu không tìm thấy cửa sổ LDPlayer, khởi động lại LDPlayer
+                LaunchLDPlayer(index);
+                Thread.Sleep(8000); // Chờ đợi một khoảng thời gian sau khi khởi động LDPlayer
+                AutoAddFriend(index); // Sử dụng Task.Run để gọi AutoAddFriend
+
+            }
+        }
+
+        public void SwipeImage(int index, Mat template,string templateName, int endX, int endY)
+        {
+            string windowTitle = $"LDPlayer-{index}";
+            IntPtr ldPlayerWindowHandle = FindWindow(null, windowTitle);
+
+            if (ldPlayerWindowHandle != IntPtr.Zero)
+            {
+                int attempts = 0;
+                bool found = false;
+                Point center = new Point();
+
+                while (!found && attempts < 20)
+                {
+                    // Chụp màn hình và xử lí ảnh
+                    Bitmap croppedBitmap = CaptureScreenshot(ldPlayerWindowHandle);
+
+                    // Chuyển đổi bitmap sang image
+                    using (Image<Bgr, byte> emguImage = croppedBitmap.ToImage<Bgr, byte>())
+                    {
+                        // Thực hiện template matching
+                        Mat result = new Mat();
+                        CvInvoke.MatchTemplate(emguImage, template, result, TemplateMatchingType.CcoeffNormed);
+
+                        // Tìm vị trí của đối tượng trong hình ảnh
+                        double minVal = 0, maxVal = 0;
+                        Point minLoc = new Point(), maxLoc = new Point();
+                        CvInvoke.MinMaxLoc(result, ref minVal, ref maxVal, ref minLoc, ref maxLoc);
+
+                        // Kiểm tra xem có tìm thấy template hay không
+                        if (maxVal > 0.4)
+                        {
+                            // Hiển thị toạ độ của tâm ảnh
+                            int templateWidth = template.Width;
+                            int templateHeight = template.Height;
+                            center = new Point(maxLoc.X + templateWidth / 2, maxLoc.Y + templateHeight / 2);
+                            found = true;
+                        }
+                        else
+                        {
+                            // Tăng số lần thử và đợi 1 giây trước khi thử lại
+                            attempts++;
+                            Thread.Sleep(1000);
+                        }
+                    }
+                }
+
+                if (found)
+                {
+                    //sử dụng lệnh tap của class mainwindow để click vào ảnh
+                    Thread.Sleep(200);
+                    Swipe(index, center.X, center.Y, endX, endY);
+                    
+                }
+                else
+                {
+                    // Nếu không tìm thấy kết quả sau tất cả các lần chụp ảnh, chạy hàm ScriptsAddFriend.
+                    CloseLDPlayer(index);
+                    ClearAppData(index); //xóa dữ liệu app
+                    Dispatcher.InvokeAsync(() =>
+                    {
+
+                        string logMessage1 = $"{DateTime.Now}, {index}, error swipe image {templateName}";
+                        logStreamWriter.WriteLine(logMessage1);
+                        logStreamWriter.Flush(); // Đảm bảo thông tin được ghi vào tệp ngay lập tức
+                                                 // Cập nhật giao diện với giá trị mới của requestCount
+
+
+                    });
+
+                    Thread.Sleep(600);
+                    AutoAddFriend(index); // Sử dụng Task.Run để gọi AutoAddFriend
+                }
+            }
+            else
+            {
+                // Nếu không tìm thấy cửa sổ LDPlayer, khởi động lại LDPlayer
+                LaunchLDPlayer(index);
+                Thread.Sleep(8000); // Chờ đợi một khoảng thời gian sau khi khởi động LDPlayer
+                AutoAddFriend(index); // Sử dụng Task.Run để gọi AutoAddFriend
+
+
+            }
+        }
+
+        private Bitmap CaptureScreenshot(IntPtr windowHandle)
+        {
+            RECT windowRect;
+            GetWindowRect(windowHandle, out windowRect);
+
+            // Chụp cửa sổ
+            Bitmap fullBitmap = new Bitmap(windowRect.Right - windowRect.Left, windowRect.Bottom - windowRect.Top, PixelFormat.Format32bppArgb);
+            using (Graphics graphics = Graphics.FromImage(fullBitmap))
+            {
+                IntPtr hdc = graphics.GetHdc();
+                PrintWindow(windowHandle, hdc, 0);
+                graphics.ReleaseHdc(hdc);
+            }
+
+            // Cắt bỏ phần trên
+            int cropWidth = fullBitmap.Width;
+            int cropHeight = fullBitmap.Height - 30; // Bỏ đi 30px ở trên
+            Bitmap croppedBitmap = new Bitmap(cropWidth, cropHeight, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(croppedBitmap))
+            {
+                g.DrawImage(fullBitmap, new Rectangle(0, 0, cropWidth, cropHeight), new Rectangle(0, 30, cropWidth, cropHeight), GraphicsUnit.Pixel);
+            }
+
+            return croppedBitmap;
+        }
+
+    }
+
+
+
+
+
+}
+
